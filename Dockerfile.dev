@@ -1,0 +1,36 @@
+# Development image (the project has no production image).
+FROM ruby:3.4-slim
+
+ARG UID=1000
+ARG GID=1000
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    BUNDLE_PATH=/bundle \
+    BUNDLE_APP_CONFIG=/bundle \
+    LANG=C.UTF-8
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+      build-essential \
+      git \
+      curl \
+      libpq-dev \
+      libyaml-dev \
+      libvips \
+      postgresql-client \
+      pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
+# User with the same UID/GID as the host, so files generated inside
+# the container (Gemfile.lock, db/schema.rb, log/, tmp/) are owned by
+# your user on the host.
+RUN groupadd -g ${GID} dev 2>/dev/null || true && \
+    useradd -u ${UID} -g ${GID} -m -s /bin/bash dev 2>/dev/null || true && \
+    mkdir -p /bundle /app && \
+    chown -R ${UID}:${GID} /bundle /app
+
+USER ${UID}:${GID}
+WORKDIR /app
+
+EXPOSE 3000
+CMD ["bin/rails", "server", "-b", "0.0.0.0", "-p", "3000"]
